@@ -6,9 +6,11 @@ from datetime import datetime
 class SeafoodTransactions:
     """
     Simulated smart contract enforcing:
-    - strict workflow
-    - immutable weight & species
-    - uniform blockchain event structure
+    - Strict workflow order
+    - Immutable species & weight
+    - Anti-fraud checks
+    - Certification compliance
+    - Uniform blockchain schema
     """
 
     def __init__(self):
@@ -16,22 +18,29 @@ class SeafoodTransactions:
         self.rbac = SeafoodRBAC()
         self.batches = {}
 
-    # --------------------------------------------------
-    # STEP 1: FISHERMAN CREATES BATCH
-    # --------------------------------------------------
-    def create_batch(self, pid, batch_id, species, weight, location):
+    # -------------------------------
+    # STEP 1: CREATE BATCH (FISHERMAN)
+    # -------------------------------
+    def create_batch(self, pid, batch_id, species, weight, location, certified):
         if not self.rbac.can_perform_action(pid, "create_batch"):
             return {"success": False, "message": "Only Fisherman can create batches"}
 
         if batch_id in self.batches:
-            return {"success": False, "message": "Batch already exists"}
+            return {"success": False, "message": "Duplicate batch ID detected"}
+
+        if not certified:
+            return {
+                "success": False,
+                "message": "Batch rejected: Sustainable fishing certification required"
+            }
 
         self.batches[batch_id] = {
             "species": species,
             "weight": weight,
             "current_owner": pid,
             "stage": "CREATED",
-            "location": location
+            "location": location,
+            "certified": certified
         }
 
         self.blockchain.add_block({
@@ -42,22 +51,23 @@ class SeafoodTransactions:
             "species": species,
             "weight": weight,
             "location": location,
-            "details": "Batch created by fisherman",
+            "certified": certified,
+            "details": "Certified batch created by fisherman",
             "performed_by": pid,
             "timestamp": datetime.now().isoformat()
         })
 
         return {"success": True, "message": "Batch created successfully"}
 
-    # --------------------------------------------------
-    # STEP 2: DISTRIBUTOR TRANSFER
-    # --------------------------------------------------
+    # ---------------------------------
+    # STEP 2: OWNERSHIP TRANSFER
+    # ---------------------------------
     def transfer_ownership(self, pid, batch_id, new_owner, species, weight, location):
         if batch_id not in self.batches:
             return {"success": False, "message": "Batch does not exist"}
 
         if not self.rbac.can_perform_action(pid, "transfer_batch"):
-            return {"success": False, "message": "Only Distributor can transfer ownership"}
+            return {"success": False, "message": "Unauthorized transfer attempt"}
 
         batch = self.batches[batch_id]
 
@@ -84,6 +94,7 @@ class SeafoodTransactions:
             "species": species,
             "weight": weight,
             "location": location,
+            "certified": batch["certified"],
             "details": "Ownership transferred to distributor",
             "performed_by": pid,
             "timestamp": datetime.now().isoformat()
@@ -91,15 +102,15 @@ class SeafoodTransactions:
 
         return {"success": True, "message": "Ownership transfer recorded"}
 
-    # --------------------------------------------------
+    # ---------------------------------
     # STEP 3: TRANSPORT UPDATE
-    # --------------------------------------------------
+    # ---------------------------------
     def update_transport(self, pid, batch_id, species, weight, location, details):
         if batch_id not in self.batches:
             return {"success": False, "message": "Batch does not exist"}
 
         if not self.rbac.can_perform_action(pid, "update_transport"):
-            return {"success": False, "message": "Only Transporter can update transport"}
+            return {"success": False, "message": "Unauthorized transport update"}
 
         batch = self.batches[batch_id]
 
@@ -123,16 +134,17 @@ class SeafoodTransactions:
             "species": species,
             "weight": weight,
             "location": location,
-            "details": details or "Transport update recorded",
+            "certified": batch["certified"],
+            "details": details or "Transport verified",
             "performed_by": pid,
             "timestamp": datetime.now().isoformat()
         })
 
         return {"success": True, "message": "Transport update recorded"}
 
-    # --------------------------------------------------
-    # QUERY FULL TRACEABILITY
-    # --------------------------------------------------
+    # ---------------------------------
+    # TRACEABILITY QUERY
+    # ---------------------------------
     def get_batch_history(self, batch_id):
         history = []
         for block in self.blockchain.chain:

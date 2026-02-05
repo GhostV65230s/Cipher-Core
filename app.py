@@ -1,15 +1,17 @@
 import streamlit as st
 import pandas as pd
+import qrcode
+from io import BytesIO
 from transactions import SeafoodTransactions
 
-# ---------------- SAFE INITIALIZATION ---------------- #
+# ---------------- INIT ---------------- #
 
 if "system" not in st.session_state:
     st.session_state.system = SeafoodTransactions()
 
 system = st.session_state.system
 
-# ---------------- DEMO CREDENTIALS ---------------- #
+# ---------------- CREDENTIALS ---------------- #
 
 CREDENTIALS = {
     "Fisherman": {"id": "F001", "password": "fish123"},
@@ -18,19 +20,50 @@ CREDENTIALS = {
     "Retailer": {"id": "R001", "password": "retail123"},
 }
 
-# ---------------- PAGE CONFIG ---------------- #
+# ---------------- PAGE ---------------- #
 
-st.set_page_config(
-    page_title="Seafood Traceability System",
-    layout="wide"
-)
-
+st.set_page_config(page_title="Seafood Traceability", layout="wide")
 st.title("🐟 Blockchain-Enabled Seafood Supply Chain Traceability")
-st.caption(
-    "Strictly ordered, permissioned blockchain ensuring traceable, verifiable, immutable seafood tracking."
-)
+st.caption("Authority-verified • Tamper-proof • End-to-end transparency")
 
-# ---------------- SESSION STATE ---------------- #
+# ---------------- READ QUERY PARAMS ---------------- #
+
+qr_batch_id = st.query_params.get("batch_id")
+
+# =================================================
+# 🔓 PUBLIC CONSUMER VERIFICATION (QR ONLY)
+# =================================================
+
+if qr_batch_id:
+    st.subheader("🔍 Consumer Seafood Verification")
+
+    history = system.get_batch_history(qr_batch_id)
+
+    if history:
+        df = pd.DataFrame(history)
+        df = df.rename(columns={
+            "event": "Event",
+            "from": "From",
+            "to": "To",
+            "species": "Species",
+            "weight": "Weight (kg)",
+            "location": "Location",
+            "timestamp": "Date & Time",
+            "details": "Details",
+            "certified": "Certified"
+        })
+
+        st.dataframe(df, use_container_width=True)
+        st.success("✔ Verified immutable blockchain history")
+    else:
+        st.error("No records found for this batch ID")
+
+    st.caption("Read-only public verification. Data cannot be altered.")
+    st.stop()  # IMPORTANT: stops login UI
+
+# =================================================
+# 🔐 AUTHENTICATED SECTION
+# =================================================
 
 if "role" not in st.session_state:
     st.session_state.role = None
@@ -38,7 +71,7 @@ if "role" not in st.session_state:
 # ---------------- LOGIN ---------------- #
 
 if st.session_state.role is None:
-    st.subheader("🔐 Login")
+    st.subheader("🔐 Login (Handlers Only)")
 
     role = st.selectbox("Select Role", list(CREDENTIALS.keys()))
     password = st.text_input("Password", type="password")
@@ -51,13 +84,13 @@ if st.session_state.role is None:
         else:
             st.error("Invalid password")
 
-# ---------------- MAIN APP ---------------- #
+# ---------------- DASHBOARD ---------------- #
 
 else:
     role = st.session_state.role
     pid = CREDENTIALS[role]["id"]
 
-    st.sidebar.success(f"Logged in as: {role}")
+    st.sidebar.success(f"Logged in as {role}")
     if st.sidebar.button("Logout"):
         st.session_state.role = None
         st.rerun()
@@ -65,37 +98,32 @@ else:
     st.divider()
     st.header(f"{role} Dashboard")
 
-    # ================= FISHERMAN ================= #
-
+    # ---------- FISHERMAN ---------- #
     if role == "Fisherman":
-        st.subheader("🛥️ Step 1 — Create Batch (Source of Truth)")
-
         with st.form("create_batch"):
             batch_id = st.text_input("Batch ID")
             species = st.text_input("Species")
             weight = st.number_input("Weight (kg)", min_value=0.1)
             location = st.text_input("Catch Location")
+            certified_claim = st.checkbox("Claim sustainable certification")
             submit = st.form_submit_button("Create Batch")
 
             if submit:
-                res = system.create_batch(pid, batch_id, species, weight, location)
+                res = system.create_batch(
+                    pid, batch_id, species, weight, location, certified_claim
+                )
                 if res["success"]:
                     st.success(res["message"])
                 else:
                     st.error(res["message"])
 
-    # ================= DISTRIBUTOR ================= #
-
+    # ---------- DISTRIBUTOR ---------- #
     elif role == "Distributor":
-        st.subheader("📦 Step 2 — Ownership Transfer")
-
-        st.warning("Species and weight must EXACTLY match original batch")
-
-        with st.form("distributor_form"):
+        with st.form("transfer"):
             batch_id = st.text_input("Batch ID")
-            species = st.text_input("Species (exact match)")
-            weight = st.number_input("Weight (exact match)", min_value=0.1)
-            new_owner = st.text_input("New Owner ID (e.g., T001)")
+            species = st.text_input("Species (exact)")
+            weight = st.number_input("Weight (exact)", min_value=0.1)
+            new_owner = st.text_input("New Owner ID")
             location = st.text_input("Location")
             submit = st.form_submit_button("Transfer Ownership")
 
@@ -108,17 +136,12 @@ else:
                 else:
                     st.error(res["message"])
 
-    # ================= TRANSPORTER ================= #
-
+    # ---------- TRANSPORTER ---------- #
     elif role == "Transporter":
-        st.subheader("🚚 Step 3 — Transport Verification")
-
-        st.warning("Any species or weight mismatch will be rejected")
-
-        with st.form("transport_form"):
+        with st.form("transport"):
             batch_id = st.text_input("Batch ID")
-            species = st.text_input("Species (exact match)")
-            weight = st.number_input("Weight (exact match)", min_value=0.1)
+            species = st.text_input("Species (exact)")
+            weight = st.number_input("Weight (exact)", min_value=0.1)
             location = st.text_input("Current Location")
             details = st.text_area("Transport Details")
             submit = st.form_submit_button("Update Transport")
@@ -132,40 +155,34 @@ else:
                 else:
                     st.error(res["message"])
 
-    # ================= RETAILER ================= #
-
+    # ---------- RETAILER / QR ---------- #
     elif role == "Retailer":
-        st.subheader("🏪 Step 4 — Retail & Consumer Verification")
-        st.info("Retailers and consumers can only verify data, not modify it.")
+        st.subheader("📱 Generate Consumer QR Code")
+        qr_batch = st.text_input("Batch ID")
 
-    # ================= TRACEABILITY ================= #
+        if st.button("Generate QR"):
+            qr_url = f"http://localhost:8501/?batch_id={qr_batch}"
+            qr = qrcode.make(qr_url)
+            buf = BytesIO()
+            qr.save(buf)
+
+            st.image(buf.getvalue(), caption="Scan to verify seafood journey")
+            st.code(qr_url, language="text")
+
+    # =================================================
+    # 🔍 MANUAL TRACEABILITY VIEW (RESTORED 🎉)
+    # =================================================
 
     st.divider()
-    st.subheader("🔍 End-User Traceability Verification")
+    st.subheader("🔍 View Batch Records (Internal)")
 
-    query = st.text_input("Enter Batch ID")
+    manual_batch_id = st.text_input("Enter Batch ID to view history")
 
-    if st.button("View Traceability"):
-        history = system.get_batch_history(query)
+    if st.button("View Records"):
+        history = system.get_batch_history(manual_batch_id)
         if history:
             df = pd.DataFrame(history)
-            df = df.rename(columns={
-                "event": "Event",
-                "performed_by": "Handled By",
-                "species": "Species",
-                "weight": "Weight (kg)",
-                "location": "Location",
-                "timestamp": "Date & Time"
-            })
-            st.dataframe(df)
-            st.success("✔ Immutable, verified, ordered blockchain history")
+            st.dataframe(df, use_container_width=True)
+            st.success("Blockchain history loaded")
         else:
-            st.error("No records found for this batch")
-
-    # ================= BLOCKCHAIN VALIDATION ================= #
-
-    if st.button("Validate Blockchain Integrity"):
-        if system.blockchain.validate_chain():
-            st.success("Blockchain is valid and tamper-proof")
-        else:
-            st.error("Blockchain integrity compromised")
+            st.error("No records found")
