@@ -49,19 +49,19 @@ immutable and verifiable manner.
 git clone <PRIVATE_GITHUB_REPOSITORY_URL>
 cd seafood_traceability
 
-Step 2: Create and Activate Virtual Environment (Recommended)
+## Step 2: Create and Activate Virtual Environment (Recommended)
 python -m venv venv
 
-Windows
+## Windows
 venv\Scripts\activate
 
-macOS / Linux
+## macOS / Linux
 source venv/bin/activate
 
-Step 3: Install Dependencies
+## Step 3: Install Dependencies
 pip install -r requirements.txt
 
-Step 4: Run the Application
+## Step 4: Run the Application
 streamlit run app.py
 
 The application will be available at:
