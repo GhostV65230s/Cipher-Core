@@ -26,52 +26,36 @@ st.set_page_config(page_title="Seafood Traceability", layout="wide")
 st.title("🐟 Blockchain-Enabled Seafood Supply Chain Traceability")
 st.caption("Authority-verified • Tamper-proof • End-to-end transparency")
 
-# ---------------- READ QUERY PARAMS ---------------- #
+# ---------------- QR PARAM ---------------- #
 
 qr_batch_id = st.query_params.get("batch_id")
 
 # =================================================
-# 🔓 PUBLIC CONSUMER VERIFICATION (QR ONLY)
+# 🔓 PUBLIC CONSUMER VERIFICATION
 # =================================================
 
 if qr_batch_id:
     st.subheader("🔍 Consumer Seafood Verification")
-
     history = system.get_batch_history(qr_batch_id)
 
     if history:
         df = pd.DataFrame(history)
-        df = df.rename(columns={
-            "event": "Event",
-            "from": "From",
-            "to": "To",
-            "species": "Species",
-            "weight": "Weight (kg)",
-            "location": "Location",
-            "timestamp": "Date & Time",
-            "details": "Details",
-            "certified": "Certified"
-        })
-
         st.dataframe(df, use_container_width=True)
         st.success("✔ Verified immutable blockchain history")
     else:
-        st.error("No records found for this batch ID")
+        st.error("No records found")
 
-    st.caption("Read-only public verification. Data cannot be altered.")
-    st.stop()  # IMPORTANT: stops login UI
+    st.stop()
 
 # =================================================
-# 🔐 AUTHENTICATED SECTION
+# 🔐 AUTHENTICATION
 # =================================================
 
 if "role" not in st.session_state:
     st.session_state.role = None
 
-# ---------------- LOGIN ---------------- #
-
 if st.session_state.role is None:
-    st.subheader("🔐 Login (Handlers Only)")
+    st.subheader("🔐 Login")
 
     role = st.selectbox("Select Role", list(CREDENTIALS.keys()))
     password = st.text_input("Password", type="password")
@@ -79,12 +63,13 @@ if st.session_state.role is None:
     if st.button("Login"):
         if password == CREDENTIALS[role]["password"]:
             st.session_state.role = role
-            st.success(f"Logged in as {role}")
             st.rerun()
         else:
             st.error("Invalid password")
 
-# ---------------- DASHBOARD ---------------- #
+# =================================================
+# 🧠 DASHBOARD
+# =================================================
 
 else:
     role = st.session_state.role
@@ -95,7 +80,6 @@ else:
         st.session_state.role = None
         st.rerun()
 
-    st.divider()
     st.header(f"{role} Dashboard")
 
     # ---------- FISHERMAN ---------- #
@@ -105,13 +89,11 @@ else:
             species = st.text_input("Species")
             weight = st.number_input("Weight (kg)", min_value=0.1)
             location = st.text_input("Catch Location")
-            certified_claim = st.checkbox("Claim sustainable certification")
+            certified = st.checkbox("Claim sustainable certification")
             submit = st.form_submit_button("Create Batch")
 
             if submit:
-                res = system.create_batch(
-                    pid, batch_id, species, weight, location, certified_claim
-                )
+                res = system.create_batch(pid, batch_id, species, weight, location, certified)
                 if res["success"]:
                     st.success(res["message"])
                 else:
@@ -125,12 +107,10 @@ else:
             weight = st.number_input("Weight (exact)", min_value=0.1)
             new_owner = st.text_input("New Owner ID")
             location = st.text_input("Location")
-            submit = st.form_submit_button("Transfer Ownership")
+            submit = st.form_submit_button("Transfer")
 
             if submit:
-                res = system.transfer_ownership(
-                    pid, batch_id, new_owner, species, weight, location
-                )
+                res = system.transfer_ownership(pid, batch_id, new_owner, species, weight, location)
                 if res["success"]:
                     st.success(res["message"])
                 else:
@@ -147,42 +127,47 @@ else:
             submit = st.form_submit_button("Update Transport")
 
             if submit:
-                res = system.update_transport(
-                    pid, batch_id, species, weight, location, details
-                )
+                res = system.update_transport(pid, batch_id, species, weight, location, details)
                 if res["success"]:
                     st.success(res["message"])
                 else:
                     st.error(res["message"])
 
-    # ---------- RETAILER / QR ---------- #
+    # ---------- RETAILER ---------- #
     elif role == "Retailer":
-        st.subheader("📱 Generate Consumer QR Code")
-        qr_batch = st.text_input("Batch ID")
+        st.subheader("🏪 Retail Receipt")
 
+        with st.form("retail_receipt"):
+            batch_id = st.text_input("Batch ID")
+            species = st.text_input("Species (exact)")
+            weight = st.number_input("Weight (exact)", min_value=0.1)
+            location = st.text_input("Retail Location")
+            submit = st.form_submit_button("Confirm Receipt")
+
+            if submit:
+                res = system.retail_receipt(pid, batch_id, species, weight, location)
+                if res["success"]:
+                    st.success(res["message"])
+                else:
+                    st.error(res["message"])
+
+        st.subheader("📱 Generate Consumer QR")
+        qr_batch = st.text_input("Batch ID for QR")
         if st.button("Generate QR"):
             qr_url = f"http://localhost:8501/?batch_id={qr_batch}"
             qr = qrcode.make(qr_url)
             buf = BytesIO()
             qr.save(buf)
+            st.image(buf.getvalue())
+            st.code(qr_url)
 
-            st.image(buf.getvalue(), caption="Scan to verify seafood journey")
-            st.code(qr_url, language="text")
-
-    # =================================================
-    # 🔍 MANUAL TRACEABILITY VIEW (RESTORED 🎉)
-    # =================================================
-
+    # ---------- HISTORY ---------- #
     st.divider()
-    st.subheader("🔍 View Batch Records (Internal)")
-
-    manual_batch_id = st.text_input("Enter Batch ID to view history")
-
+    st.subheader("🔍 View Batch History")
+    query = st.text_input("Batch ID")
     if st.button("View Records"):
-        history = system.get_batch_history(manual_batch_id)
+        history = system.get_batch_history(query)
         if history:
-            df = pd.DataFrame(history)
-            st.dataframe(df, use_container_width=True)
-            st.success("Blockchain history loaded")
+            st.dataframe(pd.DataFrame(history), use_container_width=True)
         else:
             st.error("No records found")
