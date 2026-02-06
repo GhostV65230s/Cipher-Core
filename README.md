@@ -85,6 +85,26 @@ http://localhost:8501
 -Consumers can view the complete seafood supply chain history
 without logging in.
 
+## ⚠️ Limitations
+
+- The blockchain is implemented as a **permissioned, single-node simulation** and does not include distributed consensus or peer-to-peer networking.
+- Blockchain data is stored **in memory during runtime** and is not persisted across application restarts.
+- Authentication is implemented using **mock credentials** for demonstration purposes.
+- Certification authority logic is simulated and not integrated with real-world regulatory databases.
+- The system enforces strict weight immutability; real-world scenarios such as spoilage or loss are not currently modeled.
+
+---
+
+## 🚀 Future Scope
+
+- Integrate **persistent storage** (database or distributed ledger) to retain blockchain data across sessions.
+- Extend to a **multi-node or decentralized blockchain architecture** with consensus mechanisms.
+- Add **cryptographic signatures** to strengthen tamper resistance against privileged attackers.
+- Integrate with **external certification authorities or government APIs** for real sustainability verification.
+- Introduce **AI-based anomaly detection** for fraud, weight discrepancies, or suspicious transfer patterns.
+- Support **mobile-first consumer interfaces** for large-scale QR-based verification.
+- Enable **role-to-role transfer constraints** and configurable supply chain workflows.
+
 
 
 
