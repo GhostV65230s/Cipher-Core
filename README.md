@@ -67,6 +67,8 @@ streamlit run app.py
 The application will be available at:
 http://localhost:8501
 
+## Login credentials:##
+
 | Role        | Password  |
 | ----------- | --------- |
 | Fisherman   | fish123   |
