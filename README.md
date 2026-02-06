@@ -67,6 +67,13 @@ streamlit run app.py
 The application will be available at:
 http://localhost:8501
 
+| Role        | Password  |
+| ----------- | --------- |
+| Fisherman   | fish123   |
+| Distributor | dist123   |
+| Transporter | trans123  |
+| Retailer    | retail123 |
+
 
 
 
