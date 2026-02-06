@@ -1,0 +1,11 @@
+[
+    {
+        "index": 0,
+        "timestamp": "2026-02-06T12:15:09.344622",
+        "data": {
+            "event": "GENESIS"
+        },
+        "previous_hash": "0",
+        "hash": "5988f195e8aa944a17948872ea383eba688640d65afc4f9a5b72f758e7a3dc1a"
+    }
+]

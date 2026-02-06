@@ -62,7 +62,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 ## Step 4: Run the Application
-streamlit run app.py
+ python -m streamlit run app.py
 
 The application will be available at:
 http://localhost:8501
