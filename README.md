@@ -46,7 +46,7 @@ immutable and verifiable manner.
 
 ### Step 1: Clone the Repository
 --bash
-git clone <PRIVATE_GITHUB_REPOSITORY_URL>
+git clone https://github.com/GhostV65230s/Cipher-Core
 cd seafood_traceability
 
 ## Step 2: Create and Activate Virtual Environment (Recommended)
