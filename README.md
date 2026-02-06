@@ -1,6 +1,6 @@
 # Blockchain-Enabled Seafood Supply Chain Traceability
 
-**Team Name:** Cipher Code
+**Team Name:** Cipher Core
 
 ## Problem Statement
 The seafood supply chain lacks transparency, making it difficult to verify
