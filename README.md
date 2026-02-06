@@ -76,6 +76,15 @@ http://localhost:8501
 | Transporter | trans123  |
 | Retailer    | retail123 |
 
+## 📱 QR Code Verification ##
+
+-QR codes are generated at the Retailer level.
+
+-Scanning the QR opens a public verification page.
+
+-Consumers can view the complete seafood supply chain history
+without logging in.
+
 
 
 
